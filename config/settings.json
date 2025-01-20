@@ -1,0 +1,39 @@
+{
+  "mt5": {
+    "username": "4007948",
+    "password": "9D6059!o",
+    "server": "SwitchMarkets-Live",
+    "pathway": "C:\\Program Files\\Switch Markets MT5 Terminal\\terminal64.exe",
+    "symbols": ["AUDCAD", "AUDCHF", "AUDJPY", "AUDNZD", "AUDUSD",
+    "CADCHF", "CADJPY", "CHFJPY",
+    "EURAUD", "EURCAD", "EURCHF", "EURGBP", "EURJPY", "EURNZD", "EURUSD",
+    "GBPAUD", "GBPCAD", "GBPCHF", "GBPJPY", "GBPNZD", "GBPUSD",
+    "NZDCAD", "NZDCHF", "NZDJPY", "NZDUSD",
+    "USDCHF", "USDCAD", "USDJPY",
+    "XAUUSD"]
+  },
+  "telegram": {
+    "token": "7364825288:AAGA-xxXNJYMGxcxOy4MrmonyoSsA1USAtw",
+    "chat_id": "5398524142"
+  },
+  "oanda": {
+    "api_key": "dfeb65d9ba89f4d755cf5a687726bcbb-202cd748fc5245b6d41b4deb609fb095",
+    "account_id": "101-004-29781138-001",
+    "url": "https://api-fxpractice.oanda.com/v3"
+  },
+  "ctrader": {
+    "ClientID": "10284_lxvT5sbTpm84yhKdeSHW8y3rFqkvySNBoCGNSpSzdeQuZ6tyC0",
+    "Secret": "11EavwBqKNIh9WeUMR4Zd7AEcXM1P1cUqiy0J1JWYXeH6YWl8o",
+    "Host": "demo-us-eqx-02.p.ctrader.com",
+    "Port": 5201,
+    "SSL": false,
+    "Username": "r.haruperi@hotmail.com",
+    "Password": "NwnH^LG6jAO3%^0PiIig",
+    "BeginString": "FIX.4.4",
+    "SenderCompID": "demo.pepperstone.3900708",
+    "SenderSubID": "QUOTE",
+    "TargetCompID": "cServer",
+    "TargetSubID": "QUOTE",
+    "HeartBeat": "40"
+  }
+}
