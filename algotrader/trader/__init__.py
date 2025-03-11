@@ -1,7 +1,7 @@
 """
 Trader module for algorithmic trading functionality.
 """
-from .order import OrderManager, OrderType, OrderStatus
+from .trade import OrderManager, OrderType, OrderStatus
 from .position import PositionManager, PositionType, PositionStatus
 from .risk import RiskManager
 from .history import TradeHistoryManager

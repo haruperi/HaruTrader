@@ -267,24 +267,351 @@ class DataAcquisitionManager:
         self,
         symbol: str,
         start_date: datetime,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
+        data_sources: Optional[List[str]] = None,
+        include_sentiment: bool = True
     ) -> Dict[str, Any]:
         """
-        Retrieve fundamental data for a symbol.
+        Retrieve fundamental data for a symbol from multiple sources.
         
         Args:
             symbol (str): Trading symbol
             start_date (datetime): Start date
-            end_date (Optional[datetime]): End date
+            end_date (Optional[datetime]): End date (defaults to current date if None)
+            data_sources (Optional[List[str]]): List of data sources to use
+                Options: 'investpy', 'forex_factory', 'social_media', 'all'
+            include_sentiment (bool): Whether to include sentiment data
             
         Returns:
-            Dict[str, Any]: Fundamental data
+            Dict[str, Any]: Fundamental data including:
+                - company_info: Company information (if available)
+                - economic_events: Economic calendar events affecting the symbol
+                - sentiment: Social media sentiment data (if include_sentiment is True)
+                - market_sentiment: Market sentiment data from trading platforms
+                - source_metadata: Information about data sources used
         """
-        # TODO: Implement fundamental data retrieval
-        # TODO: Add data source selection
-        # TODO: Add data aggregation
-        # TODO: Add data verification
-        return {}
+        logger.info(f"Retrieving fundamental data for {symbol} from {start_date} to {end_date or datetime.now()}")
+        
+        # Set default end_date if not provided
+        if end_date is None:
+            end_date = datetime.now()
+            
+        # Validate inputs
+        self._validate_fundamental_data_params(symbol, start_date, end_date)
+        
+        # Determine which data sources to use
+        available_sources = ['investpy', 'forex_factory', 'social_media']
+        if data_sources is None or 'all' in data_sources:
+            data_sources = available_sources
+        else:
+            # Filter to only include valid sources
+            data_sources = [source for source in data_sources if source in available_sources]
+            
+        if not data_sources:
+            logger.warning("No valid data sources specified for fundamental data retrieval")
+            return {}
+            
+        logger.info(f"Using data sources: {', '.join(data_sources)}")
+        
+        # Initialize result dictionary
+        result = {
+            'company_info': {},
+            'economic_events': pd.DataFrame(),
+            'sentiment': {},
+            'market_sentiment': {},
+            'source_metadata': {
+                'sources_used': data_sources,
+                'retrieval_time': datetime.now(),
+                'time_range': {
+                    'start': start_date,
+                    'end': end_date
+                }
+            }
+        }
+        
+        # Retrieve data from each source
+        if 'investpy' in data_sources:
+            self._get_investpy_data(symbol, start_date, end_date, result)
+            
+        if 'forex_factory' in data_sources:
+            self._get_forex_factory_data(symbol, start_date, end_date, result)
+            
+        if 'social_media' in data_sources and include_sentiment:
+            self._get_social_media_data(symbol, start_date, end_date, result)
+            
+        # Aggregate and verify data
+        self._aggregate_fundamental_data(result)
+        self._verify_fundamental_data(result)
+        
+        return result
+        
+    def _validate_fundamental_data_params(
+        self,
+        symbol: str,
+        start_date: datetime,
+        end_date: datetime
+    ) -> None:
+        """
+        Validate parameters for fundamental data retrieval.
+        
+        Args:
+            symbol (str): Trading symbol
+            start_date (datetime): Start date
+            end_date (datetime): End date
+            
+        Raises:
+            ValidationError: If parameters are invalid
+        """
+        # Validate symbol
+        if not symbol or not isinstance(symbol, str):
+            raise ValidationError("Symbol must be a non-empty string")
+            
+        # Validate dates
+        if not isinstance(start_date, datetime):
+            raise ValidationError("Start date must be a datetime object")
+            
+        if not isinstance(end_date, datetime):
+            raise ValidationError("End date must be a datetime object")
+            
+        if end_date < start_date:
+            raise ValidationError("End date must be after start date")
+            
+        # Check if date range is too large (e.g., more than 1 year)
+        max_days = 365
+        if (end_date - start_date).days > max_days:
+            raise ValidationError(f"Date range exceeds maximum of {max_days} days")
+    
+    def _get_investpy_data(
+        self,
+        symbol: str,
+        start_date: datetime,
+        end_date: datetime,
+        result: Dict[str, Any]
+    ) -> None:
+        """
+        Retrieve data from Investpy and add to result.
+        
+        Args:
+            symbol (str): Trading symbol
+            start_date (datetime): Start date
+            end_date (datetime): End date
+            result (Dict[str, Any]): Result dictionary to update
+        """
+        logger.info(f"Retrieving Investpy data for {symbol}")
+        
+        try:
+            # Get company information
+            company_info = self.investpy_client.get_company_info(symbol)
+            if company_info:
+                result['company_info'].update(company_info)
+                
+            # Get economic calendar events
+            calendar_data = self.investpy_client.get_economic_calendar(
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            if not calendar_data.empty:
+                # Filter events that might affect this symbol
+                # This is a simplified approach - in a real implementation,
+                # you would need more sophisticated filtering
+                if 'USD' in symbol:
+                    calendar_data = calendar_data[calendar_data['country'] == 'United States']
+                elif 'EUR' in symbol:
+                    calendar_data = calendar_data[calendar_data['country'].isin(['Eurozone', 'Germany', 'France'])]
+                # Add more currency filters as needed
+                
+                result['economic_events'] = pd.concat([result['economic_events'], calendar_data])
+                
+        except Exception as e:
+            logger.error(f"Error retrieving Investpy data: {str(e)}")
+    
+    def _get_forex_factory_data(
+        self,
+        symbol: str,
+        start_date: datetime,
+        end_date: datetime,
+        result: Dict[str, Any]
+    ) -> None:
+        """
+        Retrieve data from Forex Factory and add to result.
+        
+        Args:
+            symbol (str): Trading symbol
+            start_date (datetime): Start date
+            end_date (datetime): End date
+            result (Dict[str, Any]): Result dictionary to update
+        """
+        logger.info(f"Retrieving Forex Factory data for {symbol}")
+        
+        try:
+            # Extract currencies from symbol (assuming format like 'EURUSD')
+            currencies = []
+            if len(symbol) >= 6:
+                base_currency = symbol[0:3]
+                quote_currency = symbol[3:6]
+                currencies = [base_currency, quote_currency]
+            
+            # Get calendar events
+            if currencies:
+                calendar_data = self.forex_factory_client.get_calendar(
+                    start_date=start_date,
+                    end_date=end_date,
+                    currencies=currencies
+                )
+                
+                if not calendar_data.empty:
+                    result['economic_events'] = pd.concat([result['economic_events'], calendar_data])
+            
+            # Get market sentiment
+            if len(symbol) >= 6:
+                # Format symbol for sentiment query (e.g., 'EUR/USD')
+                formatted_symbol = f"{symbol[0:3]}/{symbol[3:6]}"
+                sentiment_data = self.forex_factory_client.get_market_sentiment(formatted_symbol)
+                
+                if sentiment_data:
+                    result['market_sentiment'].update({
+                        'forex_factory': sentiment_data
+                    })
+                    
+        except Exception as e:
+            logger.error(f"Error retrieving Forex Factory data: {str(e)}")
+    
+    def _get_social_media_data(
+        self,
+        symbol: str,
+        start_date: datetime,
+        end_date: datetime,
+        result: Dict[str, Any]
+    ) -> None:
+        """
+        Retrieve data from social media and add to result.
+        
+        Args:
+            symbol (str): Trading symbol
+            start_date (datetime): Start date
+            end_date (datetime): End date
+            result (Dict[str, Any]): Result dictionary to update
+        """
+        logger.info(f"Retrieving social media data for {symbol}")
+        
+        try:
+            # Calculate lookback days from start_date to end_date
+            lookback_days = (end_date - start_date).days
+            lookback_days = max(1, lookback_days)  # Ensure at least 1 day
+            
+            # Get sentiment data
+            sentiment_data = self.social_media_client.get_sentiment(
+                symbol=symbol,
+                lookback_days=lookback_days
+            )
+            
+            if sentiment_data:
+                result['sentiment'].update({
+                    'social_media': sentiment_data
+                })
+                
+            # Get mentions history
+            mentions_data = self.social_media_client.get_mentions_history(
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            if not mentions_data.empty:
+                result['sentiment']['mentions_history'] = mentions_data
+                
+        except Exception as e:
+            logger.error(f"Error retrieving social media data: {str(e)}")
+    
+    def _aggregate_fundamental_data(self, result: Dict[str, Any]) -> None:
+        """
+        Aggregate fundamental data from multiple sources.
+        
+        Args:
+            result (Dict[str, Any]): Result dictionary to update
+        """
+        logger.info("Aggregating fundamental data from multiple sources")
+        
+        # Deduplicate economic events
+        if not result['economic_events'].empty:
+            # Sort by date and importance
+            result['economic_events'] = result['economic_events'].sort_values(
+                by=['date', 'importance'],
+                ascending=[True, False]
+            )
+            
+            # Remove duplicates, keeping the first occurrence (highest importance)
+            if 'event' in result['economic_events'].columns:
+                result['economic_events'] = result['economic_events'].drop_duplicates(
+                    subset=['date', 'event'],
+                    keep='first'
+                )
+                
+        # Aggregate sentiment data
+        if result['sentiment'] and 'social_media' in result['sentiment']:
+            # Calculate overall sentiment score (simplified example)
+            social_sentiment = result['sentiment']['social_media']
+            market_sentiment = result['market_sentiment'].get('forex_factory', {})
+            
+            # Only calculate if we have both sources
+            if social_sentiment and market_sentiment:
+                # Simple weighted average (adjust weights as needed)
+                result['sentiment']['aggregated'] = {
+                    'bullish': (social_sentiment.get('bullish', 0) * 0.7 + 
+                               market_sentiment.get('bullish', 0) * 0.3),
+                    'bearish': (social_sentiment.get('bearish', 0) * 0.7 + 
+                               market_sentiment.get('bearish', 0) * 0.3),
+                    'neutral': (social_sentiment.get('neutral', 0) * 0.7 + 
+                               market_sentiment.get('neutral', 0) * 0.3)
+                }
+    
+    def _verify_fundamental_data(self, result: Dict[str, Any]) -> None:
+        """
+        Verify fundamental data for consistency and quality.
+        
+        Args:
+            result (Dict[str, Any]): Result dictionary to verify
+        """
+        logger.info("Verifying fundamental data quality")
+        
+        # Check if we have any data
+        has_company_info = bool(result['company_info'])
+        has_economic_events = not result['economic_events'].empty
+        has_sentiment = bool(result['sentiment'])
+        has_market_sentiment = bool(result['market_sentiment'])
+        
+        # Add data quality metrics
+        result['source_metadata']['data_quality'] = {
+            'has_company_info': has_company_info,
+            'has_economic_events': has_economic_events,
+            'has_sentiment': has_sentiment,
+            'has_market_sentiment': has_market_sentiment,
+            'completeness_score': sum([
+                has_company_info,
+                has_economic_events,
+                has_sentiment,
+                has_market_sentiment
+            ]) / 4.0  # Simple completeness score
+        }
+        
+        # Log data quality
+        logger.info(f"Fundamental data quality score: {result['source_metadata']['data_quality']['completeness_score']:.2f}")
+        
+        # Add warnings for missing data
+        warnings = []
+        if not has_company_info:
+            warnings.append("Company information is missing")
+        if not has_economic_events:
+            warnings.append("Economic events data is missing")
+        if not has_sentiment:
+            warnings.append("Sentiment data is missing")
+        if not has_market_sentiment:
+            warnings.append("Market sentiment data is missing")
+            
+        if warnings:
+            result['source_metadata']['warnings'] = warnings
+            logger.warning(f"Fundamental data warnings: {', '.join(warnings)}")
     
     def get_economic_calendar(
         self,

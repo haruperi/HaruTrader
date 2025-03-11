@@ -23,7 +23,19 @@ The `test_market_data_mock.py` script demonstrates how to test the market data p
 python examples/test_market_data_mock.py
 ```
 
-### 3. Simple Trading Strategy
+### 3. Fundamental Data Retrieval
+
+The `test_fundamental_data.py` script demonstrates how to retrieve fundamental data for a trading symbol from multiple sources using the `DataAcquisitionManager` class. It shows how to:
+
+- Retrieve data from all available sources
+- Retrieve data from specific sources
+- Display and visualize the retrieved data
+
+```bash
+python examples/test_fundamental_data.py
+```
+
+### 4. Simple Trading Strategy
 
 The `simple_strategy.py` script demonstrates how to use the market data in a simple moving average crossover trading strategy. It also uses mock data for testing.
 
@@ -59,6 +71,26 @@ df = data_manager.get_market_data(
 )
 ```
 
+## Fundamental Data Retrieval
+
+The `get_fundamental_data` function retrieves fundamental data from multiple sources:
+
+```python
+fundamental_data = data_manager.get_fundamental_data(
+    symbol="EURUSD",
+    start_date=datetime(2023, 1, 1),
+    end_date=datetime(2023, 1, 30),
+    data_sources=['investpy', 'forex_factory', 'social_media'],
+    include_sentiment=True
+)
+```
+
+The returned data includes:
+- Company information (if available)
+- Economic calendar events affecting the symbol
+- Social media sentiment data
+- Market sentiment data from trading platforms
+
 ## Requirements
 
 These examples require the following packages:
@@ -89,6 +121,7 @@ You can modify the example scripts to:
 - Change the timeframe (e.g., "M1", "M5", "H1", "D1")
 - Adjust the time range or position range
 - Modify strategy parameters (for the strategy example)
+- Select specific data sources for fundamental data
 
 ## Troubleshooting
 
