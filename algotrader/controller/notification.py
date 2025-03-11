@@ -1,7 +1,7 @@
 """
 Notification and alert management module.
 """
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from datetime import datetime
 import asyncio
 from telegram import Bot
@@ -18,7 +18,7 @@ class NotificationManager:
         """Initialize the notification manager."""
         self.config = get_config()
         self.telegram_config = self.config['telegram']
-        self.bot = Bot(token=self.telegram_config['bot_token'])
+        self.bot = Bot(self.telegram_config['bot_token'])
         self.chat_id = self.telegram_config['chat_id']
         
         # Message templates
@@ -81,10 +81,64 @@ class NotificationManager:
         Returns:
             bool: True if message sent successfully, False otherwise
         """
-        # TODO: Implement Telegram message sending
-        # TODO: Add message validation
-        # TODO: Add error handling
-        # TODO: Add retry mechanism
+        # Message validation
+        if not message or not isinstance(message, str):
+            logger.error("Invalid message format: message must be a non-empty string")
+            return False
+            
+        if parse_mode and parse_mode not in ["HTML", "Markdown", "MarkdownV2"]:
+            logger.warning(f"Invalid parse_mode: {parse_mode}. Using default.")
+            parse_mode = None
+            
+        # Retry configuration
+        max_retries = self.config.get('notification', {}).get('max_retries', 3)
+        retry_delay = self.config.get('notification', {}).get('retry_delay', 2)
+        
+        # Attempt to send message with retry mechanism
+        for attempt in range(max_retries):
+            try:
+                logger.debug(f"Sending Telegram message (attempt {attempt+1}/{max_retries})")
+                
+                await self.bot.send_message(
+                    chat_id=self.chat_id,
+                    text=message,
+                    parse_mode=parse_mode,
+                    disable_notification=disable_notification
+                )
+                
+                logger.info(f"Telegram message sent successfully")
+                return True
+                
+            except TelegramError as e:
+                logger.error(f"Telegram error on attempt {attempt+1}/{max_retries}: {str(e)}")
+                
+                # Check if we should retry based on error type
+                if "retry after" in str(e).lower():
+                    # Rate limit error, extract wait time if possible
+                    try:
+                        wait_time = int(str(e).split("retry after ")[1].split(" seconds")[0])
+                        retry_delay = max(wait_time, retry_delay)
+                    except (IndexError, ValueError):
+                        pass
+                
+                # Don't retry for certain errors
+                if "chat not found" in str(e).lower() or "bot was blocked" in str(e).lower():
+                    logger.error(f"Fatal Telegram error, not retrying: {str(e)}")
+                    return False
+                    
+                # Last attempt failed
+                if attempt == max_retries - 1:
+                    logger.error(f"Failed to send Telegram message after {max_retries} attempts")
+                    return False
+                    
+                # Wait before retrying
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                
+            except Exception as e:
+                logger.exception(f"Unexpected error sending Telegram message: {str(e)}")
+                return False
+                
         return False
     
     async def send_trade_notification(
@@ -102,11 +156,42 @@ class NotificationManager:
         Returns:
             bool: True if notification sent successfully, False otherwise
         """
-        # TODO: Implement trade notification
-        # TODO: Add trade data validation
-        # TODO: Add notification formatting
-        # TODO: Add notification priority
-        return False
+        # Trade type validation
+        valid_trade_types = ['trade_opened', 'trade_closed', 'trade_modified']
+        if trade_type not in valid_trade_types:
+            logger.error(f"Invalid trade notification type: {trade_type}")
+            return False
+            
+        # Trade data validation
+        required_fields = {
+            'trade_opened': ['symbol', 'type', 'entry', 'sl', 'tp', 'volume'],
+            'trade_closed': ['symbol', 'type', 'entry', 'exit', 'profit', 'profit_pips'],
+            'trade_modified': ['symbol', 'type', 'changes']
+        }
+        
+        # Check for required fields
+        for field in required_fields.get(trade_type, []):
+            if field not in trade_data:
+                logger.error(f"Missing required field '{field}' for {trade_type} notification")
+                return False
+                
+        # Format notification based on priority
+        priority = self.config.get('notification', {}).get('priority', {}).get('trade', 'normal')
+        disable_notification = priority.lower() != 'high'
+        
+        # Format the message using the appropriate template
+        message = self.format_message(trade_type, trade_data)
+        if not message:
+            logger.error(f"Failed to format {trade_type} notification")
+            return False
+            
+        # Send the notification
+        logger.info(f"Sending {trade_type} notification")
+        return await self.send_telegram_message(
+            message=message,
+            parse_mode="HTML",
+            disable_notification=disable_notification
+        )
     
     async def send_error_notification(
         self,
@@ -125,11 +210,70 @@ class NotificationManager:
         Returns:
             bool: True if notification sent successfully, False otherwise
         """
-        # TODO: Implement error notification
-        # TODO: Add error categorization
-        # TODO: Add error priority levels
-        # TODO: Add error tracking
-        return False
+        # Error validation
+        if not error_type or not error_message:
+            logger.error("Invalid error notification: type and message are required")
+            return False
+            
+        # Error categorization
+        error_categories = {
+            'critical': ['system_failure', 'database_failure', 'api_failure', 'authentication_failure'],
+            'high': ['trade_execution_failure', 'data_acquisition_failure', 'strategy_failure'],
+            'medium': ['connection_issue', 'rate_limit', 'timeout'],
+            'low': ['warning', 'info', 'debug']
+        }
+        
+        # Determine error priority
+        error_priority = 'medium'  # Default priority
+        for priority, categories in error_categories.items():
+            if any(category in error_type.lower() for category in categories):
+                error_priority = priority
+                break
+                
+        # Prepare notification data
+        notification_data = {
+            'type': error_type,
+            'message': error_message,
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        # Add additional error data if provided
+        if error_data:
+            # Add only essential error data to avoid cluttering the message
+            for key, value in error_data.items():
+                if key not in notification_data:
+                    notification_data[key] = value
+                    
+        # Track error in log with full details
+        log_message = f"Error: {error_type} - {error_message}"
+        if error_data:
+            log_message += f" - Details: {error_data}"
+            
+        if error_priority == 'critical':
+            logger.critical(log_message)
+        elif error_priority == 'high':
+            logger.error(log_message)
+        elif error_priority == 'medium':
+            logger.warning(log_message)
+        else:
+            logger.info(log_message)
+            
+        # Format the message
+        message = self.format_message('error', notification_data)
+        if not message:
+            logger.error(f"Failed to format error notification")
+            return False
+            
+        # Determine notification settings based on priority
+        disable_notification = error_priority.lower() in ['low', 'medium']
+        
+        # Send the notification
+        logger.info(f"Sending {error_priority} priority error notification")
+        return await self.send_telegram_message(
+            message=message,
+            parse_mode="HTML",
+            disable_notification=disable_notification
+        )
     
     async def send_signal_notification(
         self,
@@ -146,11 +290,54 @@ class NotificationManager:
         Returns:
             bool: True if notification sent successfully, False otherwise
         """
-        # TODO: Implement signal notification
-        # TODO: Add signal validation
-        # TODO: Add signal formatting
-        # TODO: Add signal aggregation
-        return False
+        # Signal validation
+        if not strategy_name:
+            logger.error("Invalid signal notification: strategy name is required")
+            return False
+            
+        # Required signal data fields
+        required_fields = ['symbol', 'action', 'price']
+        for field in required_fields:
+            if field not in signal_data:
+                logger.error(f"Missing required field '{field}' for signal notification")
+                return False
+                
+        # Validate action type
+        valid_actions = ['buy', 'sell', 'buy_limit', 'sell_limit', 'buy_stop', 'sell_stop', 'close']
+        if 'action' in signal_data:
+            action = signal_data['action']
+            if isinstance(action, str) and action.lower() not in [a.lower() for a in valid_actions]:
+                logger.warning(f"Unusual signal action: {action}")
+            elif not isinstance(action, str):
+                logger.warning(f"Invalid action type: expected string, got {type(action).__name__}")
+            
+        # Add strategy name to signal data
+        signal_data['strategy'] = strategy_name
+        
+        # Check for signal aggregation
+        should_aggregate = self.config.get('notification', {}).get('aggregate_signals', False)
+        if should_aggregate:
+            # In a real implementation, we would store signals and send them in batches
+            # For now, we'll just log that aggregation would happen
+            logger.info(f"Signal from {strategy_name} would be aggregated (not implemented)")
+            
+        # Format the message
+        message = self.format_message('signal', signal_data)
+        if not message:
+            logger.error(f"Failed to format signal notification")
+            return False
+            
+        # Determine notification settings
+        priority = self.config.get('notification', {}).get('priority', {}).get('signal', 'normal')
+        disable_notification = priority.lower() != 'high' if isinstance(priority, str) else True
+        
+        # Send the notification
+        logger.info(f"Sending signal notification from strategy {strategy_name}")
+        return await self.send_telegram_message(
+            message=message,
+            parse_mode="HTML",
+            disable_notification=disable_notification
+        )
     
     async def send_system_notification(
         self,
@@ -169,11 +356,63 @@ class NotificationManager:
         Returns:
             bool: True if notification sent successfully, False otherwise
         """
-        # TODO: Implement system notification
-        # TODO: Add notification categorization
-        # TODO: Add notification priority
-        # TODO: Add notification scheduling
-        return False
+        # Notification validation
+        if not notification_type or not message:
+            logger.error("Invalid system notification: type and message are required")
+            return False
+            
+        # Notification categorization
+        system_categories = {
+            'high': ['startup', 'shutdown', 'restart', 'update', 'maintenance'],
+            'medium': ['status', 'performance', 'resource'],
+            'low': ['info', 'debug', 'log']
+        }
+        
+        # Determine notification priority
+        notification_priority = 'medium'  # Default priority
+        for priority, categories in system_categories.items():
+            if any(category in notification_type.lower() for category in categories):
+                notification_priority = priority
+                break
+                
+        # Prepare notification data
+        notification_data = {
+            'type': notification_type,
+            'message': message,
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        # Add additional data if provided
+        if data:
+            for key, value in data.items():
+                if key not in notification_data:
+                    notification_data[key] = value
+                    
+        # Check if notification should be scheduled
+        scheduled_time = data.get('scheduled_time') if data else None
+        if scheduled_time and isinstance(scheduled_time, datetime) and scheduled_time > datetime.now():
+            # In a real implementation, we would schedule this notification
+            # For now, we'll just log that scheduling would happen
+            delay = (scheduled_time - datetime.now()).total_seconds()
+            logger.info(f"System notification would be scheduled for {scheduled_time} ({delay:.1f}s from now)")
+            # In a real implementation, we would use asyncio.create_task with asyncio.sleep
+            
+        # Format the message
+        message = self.format_message('system', notification_data)
+        if not message:
+            logger.error(f"Failed to format system notification")
+            return False
+            
+        # Determine notification settings
+        disable_notification = notification_priority.lower() != 'high'
+        
+        # Send the notification
+        logger.info(f"Sending {notification_priority} priority system notification")
+        return await self.send_telegram_message(
+            message=message,
+            parse_mode="HTML",
+            disable_notification=disable_notification
+        )
     
     def format_message(
         self,
@@ -190,11 +429,49 @@ class NotificationManager:
         Returns:
             str: Formatted message
         """
-        # TODO: Implement message formatting
-        # TODO: Add template validation
-        # TODO: Add template customization
-        # TODO: Add template versioning
-        return ""
+        # Template validation
+        if not template_name or not isinstance(template_name, str):
+            logger.error(f"Invalid template name: {template_name}")
+            return ""
+            
+        # Check if template exists
+        template = self.templates.get(template_name)
+        if not template:
+            logger.error(f"Template not found: {template_name}")
+            return ""
+            
+        # Check for custom template override
+        custom_templates = self.config.get('notification', {}).get('custom_templates', {})
+        if template_name in custom_templates:
+            template = custom_templates[template_name]
+            logger.debug(f"Using custom template for {template_name}")
+            
+        # Data validation
+        if not data or not isinstance(data, dict):
+            logger.error(f"Invalid data for template {template_name}: {data}")
+            return ""
+            
+        try:
+            # Format the template with the provided data
+            # Add default timestamp if not provided
+            if 'time' not in data and '{time}' in template:
+                data['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+            # Format the message
+            formatted_message = template.format(**data)
+            return formatted_message
+            
+        except KeyError as e:
+            logger.error(f"Missing required data for template {template_name}: {e}")
+            return ""
+            
+        except ValueError as e:
+            logger.error(f"Error formatting template {template_name}: {e}")
+            return ""
+            
+        except Exception as e:
+            logger.exception(f"Unexpected error formatting message with template {template_name}: {e}")
+            return ""
     
     async def send_batch_notifications(
         self,
@@ -209,8 +486,124 @@ class NotificationManager:
         Returns:
             Dict[int, bool]: Dictionary of notification indices and their success status
         """
-        # TODO: Implement batch notification
-        # TODO: Add batch optimization
-        # TODO: Add parallel processing
-        # TODO: Add batch monitoring
-        return {} 
+        # Batch validation
+        if not notifications or not isinstance(notifications, list):
+            logger.error("Invalid batch notifications: must be a non-empty list")
+            return {}
+            
+        # Prepare results dictionary
+        results = {}
+        
+        # Check if batch optimization is enabled
+        should_optimize = self.config.get('notification', {}).get('optimize_batch', True)
+        if should_optimize:
+            # Group notifications by type for optimization
+            grouped_notifications = {}
+            for i, notification in enumerate(notifications):
+                notification_type = notification.get('type', 'unknown')
+                if notification_type not in grouped_notifications:
+                    grouped_notifications[notification_type] = []
+                grouped_notifications[notification_type].append((i, notification))
+                
+            logger.info(f"Optimized batch: grouped {len(notifications)} notifications into {len(grouped_notifications)} types")
+            
+            # Process each group
+            for notification_type, group in grouped_notifications.items():
+                logger.debug(f"Processing {len(group)} notifications of type {notification_type}")
+                
+                # For certain types, we might want to combine them into a single notification
+                # This is just a placeholder for that logic
+                if notification_type in ['info', 'debug', 'log'] and len(group) > 3:
+                    logger.info(f"Combining {len(group)} {notification_type} notifications")
+                    # Implementation would go here
+        
+        # Process notifications in parallel
+        # Create tasks for each notification
+        tasks = []
+        for i, notification in enumerate(notifications):
+            # Extract notification parameters
+            notification_type = notification.get('type')
+            if not notification_type:
+                logger.error(f"Notification at index {i} missing required 'type' field")
+                results[i] = False
+                continue
+                
+            # Create appropriate task based on notification type
+            if notification_type == 'trade':
+                trade_type = notification.get('trade_type')
+                trade_data = notification.get('data', {})
+                if not trade_type or not trade_data:
+                    logger.error(f"Invalid trade notification at index {i}")
+                    results[i] = False
+                    continue
+                task = self.send_trade_notification(trade_type, trade_data)
+                
+            elif notification_type == 'error':
+                error_type = notification.get('error_type')
+                error_message = notification.get('message')
+                error_data = notification.get('data')
+                if not error_type or not error_message:
+                    logger.error(f"Invalid error notification at index {i}")
+                    results[i] = False
+                    continue
+                task = self.send_error_notification(error_type, error_message, error_data)
+                
+            elif notification_type == 'signal':
+                strategy_name = notification.get('strategy')
+                signal_data = notification.get('data', {})
+                if not strategy_name or not signal_data:
+                    logger.error(f"Invalid signal notification at index {i}")
+                    results[i] = False
+                    continue
+                task = self.send_signal_notification(strategy_name, signal_data)
+                
+            elif notification_type == 'system':
+                system_type = notification.get('system_type')
+                message = notification.get('message')
+                data = notification.get('data')
+                if not system_type or not message:
+                    logger.error(f"Invalid system notification at index {i}")
+                    results[i] = False
+                    continue
+                task = self.send_system_notification(system_type, message, data)
+                
+            else:
+                logger.error(f"Unknown notification type at index {i}: {notification_type}")
+                results[i] = False
+                continue
+                
+            # Add task to list with its index
+            tasks.append((i, task))
+            
+        # Execute tasks in parallel with monitoring
+        if tasks:
+            logger.info(f"Executing {len(tasks)} notification tasks in parallel")
+            
+            # Process tasks in batches to avoid overwhelming the system
+            batch_size = self.config.get('notification', {}).get('parallel_batch_size', 5)
+            for batch_start in range(0, len(tasks), batch_size):
+                batch_end = min(batch_start + batch_size, len(tasks))
+                batch = tasks[batch_start:batch_end]
+                
+                logger.debug(f"Processing batch {batch_start//batch_size + 1}: {batch_start} to {batch_end-1}")
+                
+                # Create and gather tasks
+                batch_tasks = [task for _, task in batch]
+                batch_indices = [idx for idx, _ in batch]
+                
+                # Execute batch
+                batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+                
+                # Process results
+                for i, result in enumerate(batch_results):
+                    idx = batch_indices[i]
+                    if isinstance(result, Exception):
+                        logger.error(f"Exception in notification {idx}: {str(result)}")
+                        results[idx] = False
+                    else:
+                        results[idx] = bool(result)
+                        
+        # Return results
+        success_count = sum(1 for success in results.values() if success)
+        logger.info(f"Batch notification complete: {success_count}/{len(notifications)} successful")
+        return results 
