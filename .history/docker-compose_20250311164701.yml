@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Main trading application
+  app:
+    build: .
+    container_name: harutrader-app
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./models:/app/models
+    ports:
+      - "5000:5000"  # Dashboard
+      - "8000:8000"  # API
+    depends_on:
+      - timescaledb
+      - prometheus
+      - grafana
+    networks:
+      - harutrader-network
+    # TODO: Add healthcheck
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 40s
+
+  # TimescaleDB for time-series data
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    container_name: harutrader-timescaledb
+    environment:
+      - POSTGRES_DB=${TIMESCALE_DB}
+      - POSTGRES_USER=${TIMESCALE_USER}
+      - POSTGRES_PASSWORD=${TIMESCALE_PASSWORD}
+    volumes:
+      - timescaledb-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - harutrader-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: harutrader-prometheus
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - harutrader-network
+    # TODO: Add configuration
+    # command:
+    #   - '--config.file=/etc/prometheus/prometheus.yml'
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: harutrader-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - harutrader-network
+
+volumes:
+  timescaledb-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  harutrader-network:
+    driver: bridge
+
+# TODO: Add additional services
+# - Redis for caching
+# - Nginx for reverse proxy
+# - Elasticsearch for logging
+# - Kibana for log visualization 
