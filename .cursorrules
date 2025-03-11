@@ -94,6 +94,26 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - Include info useful for debugging in the program output.
 - Read the file before you try to edit it.
 - Due to Cursor's limit, when you use `git` and `gh` and need to submit a multiline commit message, first write the message in a file, and then use `git commit -F <filename>` or similar command to commit. And then remove the file. Include "[Cursor] " in the commit message and PR title.
+- Always implement proper logging in all modules following these guidelines:
+  1. Import the logger at the top of each module: `from algotrader.utils import get_logger`
+  2. Create a module-specific logger: `logger = get_logger(__name__)`
+  3. Use appropriate log levels:
+     - DEBUG: Detailed information for debugging
+     - INFO: Confirmation that things are working as expected
+     - WARNING: Indication that something unexpected happened but the application is still working
+     - ERROR: Due to a more serious problem, the application couldn't perform a function
+     - CRITICAL: A serious error indicating the application may be unable to continue running
+  4. Include context in log messages (e.g., function parameters, return values, object states)
+  5. Log the start and end of important operations
+  6. Log all exceptions with traceback information using `logger.exception()` or `logger.error(exc_info=True)`
+  7. Use structured logging for machine-parseable logs when appropriate
+- Implement defensive programming to handle circular imports:
+  1. Use try/except blocks for imports that might cause circular dependencies
+  2. Implement fallback mechanisms for critical utilities like logging
+  3. Follow the module hierarchy defined in docs/dependency_management.md
+  4. Use late imports inside functions when necessary
+  5. Use dependency injection to pass higher-level components to lower-level ones
+  6. Test imports thoroughly before committing code
 
 ## Cursor learned
 
