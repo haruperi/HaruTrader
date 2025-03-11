@@ -33,6 +33,7 @@ env/
 .project
 .pydevproject
 .settings/
+.history/
 
 # Environment Variables
 .env
