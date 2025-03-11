@@ -606,4 +606,112 @@ class NotificationManager:
         # Return results
         success_count = sum(1 for success in results.values() if success)
         logger.info(f"Batch notification complete: {success_count}/{len(notifications)} successful")
-        return results 
+        return results
+        
+    async def notify_event(
+        self,
+        event_type: str,
+        event_name: str,
+        message: str,
+        data: Optional[Dict[str, Any]] = None,
+        priority: str = "normal",
+        category: str = "system"
+    ) -> bool:
+        """
+        Universal method to send notifications for any application event.
+        
+        This method serves as a central point for all application notifications,
+        making it easy to implement consistent notification behavior across the application.
+        
+        Args:
+            event_type (str): Type of event (e.g., 'trade', 'system', 'error', 'signal')
+            event_name (str): Specific name of the event (e.g., 'order_placed', 'startup', 'api_error')
+            message (str): Human-readable message describing the event
+            data (Optional[Dict[str, Any]]): Additional data related to the event
+            priority (str): Priority level ('high', 'normal', 'low')
+            category (str): Category for grouping similar events
+            
+        Returns:
+            bool: True if notification sent successfully, False otherwise
+        """
+        logger.info(f"Event notification: {event_type}.{event_name} - {message}")
+        
+        # Default data if none provided
+        if data is None:
+            data = {}
+            
+        # Add metadata to the event data
+        event_data = {
+            'timestamp': datetime.now().isoformat(),
+            'category': category,
+            'priority': priority,
+            **data
+        }
+        
+        # Route to appropriate notification method based on event type
+        if event_type.lower() == 'trade':
+            # For trade events
+            trade_data = {
+                'symbol': data.get('symbol', 'UNKNOWN'),
+                'type': data.get('type', 'UNKNOWN'),
+                'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                **data
+            }
+            
+            if event_name.lower() in ['opened', 'open', 'new', 'created']:
+                return await self.send_trade_notification('trade_opened', trade_data)
+            elif event_name.lower() in ['closed', 'close', 'completed']:
+                return await self.send_trade_notification('trade_closed', trade_data)
+            else:
+                # Generic trade notification
+                return await self.send_system_notification(
+                    f"trade_{event_name}",
+                    message,
+                    event_data
+                )
+                
+        elif event_type.lower() == 'error':
+            # For error events
+            return await self.send_error_notification(
+                error_type=event_name,
+                error_message=message,
+                error_data=event_data
+            )
+            
+        elif event_type.lower() == 'signal':
+            # For trading signal events
+            signal_data = {
+                'symbol': data.get('symbol', 'UNKNOWN'),
+                'action': data.get('action', 'UNKNOWN'),
+                'price': data.get('price', 0.0),
+                'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                **data
+            }
+            
+            return await self.send_signal_notification(
+                strategy_name=data.get('strategy', 'UNKNOWN'),
+                signal_data=signal_data
+            )
+            
+        else:
+            # For all other event types (system, info, etc.)
+            return await self.send_system_notification(
+                notification_type=f"{event_type}_{event_name}",
+                message=message,
+                data=event_data
+            )
+            
+    @classmethod
+    def get_instance(cls):
+        """
+        Get or create a singleton instance of NotificationManager.
+        
+        This method ensures that only one instance of NotificationManager
+        is created throughout the application.
+        
+        Returns:
+            NotificationManager: Singleton instance of NotificationManager
+        """
+        if not hasattr(cls, '_instance'):
+            cls._instance = cls()
+        return cls._instance 
