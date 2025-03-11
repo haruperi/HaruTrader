@@ -3,6 +3,6 @@ MetaTrader 5 integration module.
 
 This module provides integration with the MetaTrader 5 trading platform.
 """
-from .connection import MT5Connection
+from .client import MT5Client
 
-__all__ = ['MT5Connection']
+__all__ = ['MT5Client']
