@@ -1,4 +1,4 @@
-# Python
+# Python related
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,7 +20,7 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+# Virtual Environments
 venv/
 ENV/
 env/
@@ -89,7 +89,7 @@ Thumbs.db
 *.tmp
 *.temp
 
-# Project specific
+# Project  specific
 *.mt5
 *.experts
 *.set 
