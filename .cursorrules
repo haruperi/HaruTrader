@@ -146,7 +146,9 @@ Reorganizing the project structure to follow best practices.
 
 [ ] Core Infrastructure Setup
   - [X] Set up logging configuration in app/utils/logger.py
-  - [ ] Implement timeutils.py for timezone handling
+  - [X] Implement timeutils.py for timezone handling
+    - [X] Implement core functionality
+    - [X] Add comprehensive test suite in tests/unit/utils/test_timeutils.py
   - [ ] Create validation.py for input validation
   - [ ] Set up TimescaleDB connection and models
   - [ ] Configure OAuth2 authentication system
