@@ -30,9 +30,9 @@ setup(
     python_requires='>=3.13.2',
     entry_points={
         'console_scripts': [
-            'harutrader=algotrader.live_trading.executor:main',
-            'harutrader-dashboard=algotrader.dashboard.app:main',
-            'harutrader-backtest=algotrader.backtest.engine:main',
+            'harutrader=app.live_trading.executor:main',
+            'harutrader-dashboard=app.dashboard.app:main',
+            'harutrader-backtest=app.backtest.engine:main',
         ],
     },
     # TODO: Add package data (templates, static files, etc.)

@@ -4,7 +4,7 @@ Test module for notification functionality.
 import asyncio
 import pytest
 from datetime import datetime
-from algotrader.controller.notification import NotificationManager
+from app.core.notification import NotificationManager
 
 @pytest.mark.asyncio
 async def test_send_telegram_message():

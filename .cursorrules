@@ -86,6 +86,14 @@ Snippet: This is a snippet of the search result
 ```
 If needed, you can further use the `web_scraper.py` file to scrape the web page content.
 
+# Development Guidelines
+
+1. Always activate the virtual environment before working on the project
+2. Add new dependencies to requirements.txt
+3. Keep code organized and well-documented
+4. Follow PEP 8 style guidelines for Python code
+5. Keep your code DRY (Dont Repeat Yourself)
+
 # Lessons
 
 ## User Specified Lessons
@@ -95,7 +103,7 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - Read the file before you try to edit it.
 - Due to Cursor's limit, when you use `git` and `gh` and need to submit a multiline commit message, first write the message in a file, and then use `git commit -F <filename>` or similar command to commit. And then remove the file. Include "[Cursor] " in the commit message and PR title.
 - Always implement proper logging in all modules following these guidelines:
-  1. Import the logger at the top of each module: `from algotrader.utils import get_logger`
+  1. Import the logger at the top of each module: `from app.utils import get_logger`
   2. Create a module-specific logger: `logger = get_logger(__name__)`
   3. Use appropriate log levels:
      - DEBUG: Detailed information for debugging
@@ -124,78 +132,57 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 # Scratchpad
 
-## Current Task: Create Project Structure and TODOs
-Creating the initial project structure with TODO comments based on project requirements.
+## Current Task: Project Reorganization
+Reorganizing the project structure to follow best practices.
 
 ### Plan:
-[X] Create root level files (README.md, requirements.txt, setup.py, etc.)
-[ ] Create algotrader module structure
-  [X] config module
-    [X] settings.py
-    [X] credentials.py
-  [X] controller module
-    [X] data_acquisition.py
-    [X] notification.py
-    [X] persistence.py
-  [X] trader module
-    [X] trade.py (refactored from order.py)
-      [X] Implement place_market_order method
-      [X] Implement place_pending_order method
-      [ ] Implement modify_order method
-      [ ] Implement cancel_order method
-      [ ] Implement get_order_status method
-      [ ] Implement get_pending_orders method
-      [ ] Implement calculate_position_size method
-      [X] Implement validate_order_parameters method
-  [ ] strategy module
-  [ ] backtest module
-  [ ] live_trading module
-  [ ] dashboard module
-  [ ] models module
-  [ ] integrations module
-  [ ] utils module
-[X] Create scripts directory
-  [X] Create test_market_order.py script
-  [X] Create test_market_sell_order.py script
-  [X] Create test_sl_tp.py script
-  [X] Create test_sell_sl_tp.py script
-[ ] Create tests directory
-[ ] Create docs directory
+[X] Move all test files from examples to tests directory
+[X] Delete examples directory
+[X] Delete scripts directory
+[X] Update .cursorrules with testing rules
+[X] Update tests/README.md to reflect the changes
+[X] Consolidate notification functionality
+[X] Delete all log files for a fresh start
 
 ### Progress:
-✓ Created root level files:
-  - README.md
-  - requirements.txt
-  - setup.py
-  - .env.example
-  - .gitignore
-  - Dockerfile
-  - docker-compose.yml
+✓ Moved all test files from examples to tests directory:
+  - Renamed simple_logger_test.py to test_logger.py
+  - Copied test_market_data.py, test_fundamental_data.py, and test_market_data_mock.py
+  - Copied README.md
 
-✓ Created config module with:
-  - settings.py: Application settings and configuration
-  - credentials.py: Secure credential management
+✓ Deleted examples directory
 
-✓ Created controller module with:
-  - data_acquisition.py: Market data collection and processing
-  - notification.py: Telegram alerts and notifications
-  - persistence.py: TimescaleDB storage operations
+✓ Deleted scripts directory
 
-✓ Created trader module with:
-  - trade.py: Order placement and management (refactored from order.py)
-    - Implemented place_market_order method with validation, risk checks, and position sizing
-    - Added notifications for order placement and errors
-    - Implemented validate_order_parameters method for parameter validation
-    - Tested both market buy and sell orders successfully
-    - Tested market orders with stop loss and take profit parameters
-    - Implemented place_pending_order method with price and expiry validation
+✓ Updated .cursorrules with testing rules:
+  - Added guidelines for test organization
+  - Added naming conventions for test files, classes, and methods
 
-✓ Created scripts directory with:
-  - test_market_order.py: Script to test the place_market_order function
-  - test_market_sell_order.py: Script to specifically test market sell orders
-  - test_sl_tp.py: Script to test market buy orders with stop loss and take profit
-  - test_sell_sl_tp.py: Script to test market sell orders with stop loss and take profit
-  - test_pending_buy_sl_tp.py: Script to test pending buy orders with stop loss and take profit
-  - test_pending_sell_sl_tp.py: Script to test pending sell orders with stop loss and take profit
+✓ Updated tests/README.md:
+  - Updated file paths and commands
+  - Added information about test organization and running tests
 
-Next: Implement the modify_order method in the trade.py file
+✓ Consolidated notification functionality:
+  - Moved convenience functions from app/utils/notify.py to app/core/notification.py
+  - Deleted app/utils/notify.py and app/utils/notification.py
+  - Updated imports in app/trader/trade.py
+
+✓ Deleted all log files for a fresh start
+
+Next: Continue implementing the remaining methods in the trade.py file:
+  - Implement modify_order method
+  - Implement cancel_order method
+  - Implement get_order_status method
+  - Implement get_pending_orders method
+  - Implement calculate_position_size method
+
+## Testing Rules
+
+All tests must be placed in the tests folder. This includes:
+- Unit tests for individual components
+- Integration tests for testing interactions between components
+- End-to-end tests for testing the entire system
+- Test fixtures and test utilities
+
+Each test file should follow the naming convention of `test_*.py` to be automatically discovered by test runners.
+Test classes should be named `Test*` and test methods should be named `test_*`.

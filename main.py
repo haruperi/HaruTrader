@@ -1,9 +1,9 @@
 import os
 import logging
 from dotenv import load_dotenv
-from algotrader.config.settings import setup_logging
-from algotrader.dashboard.app import create_app
-from algotrader.live_trading.executor import LiveTrader
+from app.config.settings import setup_logging
+from app.dashboard.app import create_app
+from app.live_trading.executor import LiveTrader
 
 # Load environment variables
 load_dotenv()

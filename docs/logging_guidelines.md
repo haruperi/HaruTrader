@@ -7,7 +7,7 @@ This document outlines the logging standards and best practices for the HaruTrad
 Every module should set up logging as follows:
 
 ```python
-from algotrader.utils import get_logger
+from app.utils import get_logger
 
 # Create a module-specific logger
 logger = get_logger(__name__)
@@ -167,7 +167,7 @@ If logs are not appearing as expected:
 ## Example Implementation
 
 ```python
-from algotrader.utils import get_logger
+from app.utils import get_logger
 
 logger = get_logger(__name__)
 

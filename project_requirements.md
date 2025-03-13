@@ -60,37 +60,35 @@ HaruTrader/
 ├── README.md
 ├── requirements.txt
 ├── setup.py
-├── Dockerfile
-├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
-├── algotrader/
+├── app/
 │   ├── __init__.py
 │   ├── config/
 │   │   ├── __init__.py
 │   │   ├── settings.py           # Application settings and configuration
 │   │   └── credentials.py        # Secure credential management (encrypted)
 │   │
-│   ├── controller/
+│   ├── core/
 │   │   ├── __init__.py
-│   │   ├── data_acquisition.py   # Market, fundamental, sentiment data collection
+│   │   ├── mt5_data.py          # MT5 client and market data operations
 │   │   ├── notification.py       # Telegram alerts and notifications
-│   │   └── persistence.py        # TimescaleDB storage operations
+│   │   └── database.py          # TimescaleDB storage operations
 │   │
 │   ├── trader/
 │   │   ├── __init__.py
-│   │   ├── order.py              # Order placement and management
-│   │   ├── position.py           # Position management
-│   │   ├── risk.py               # Risk calculation and lot sizing
-│   │   └── history.py            # Trade history retrieval
+│   │   ├── order.py             # Order placement and management
+│   │   ├── position.py          # Position management
+│   │   ├── risk.py              # Risk calculation and lot sizing
+│   │   └── history.py           # Trade history retrieval
 │   │
 │   ├── strategy/
 │   │   ├── __init__.py
-│   │   ├── base.py               # Base strategy class
-│   │   ├── indicators.py         # Technical indicators implementation
-│   │   ├── screener.py           # Symbol screening functionality
-│   │   ├── risk_management.py    # SL/TP calculation, position sizing
-│   │   └── strategies/           # Individual strategy implementations
+│   │   ├── base.py              # Base strategy class
+│   │   ├── indicators.py        # Technical indicators implementation
+│   │   ├── screener.py          # Symbol screening functionality
+│   │   ├── risk_management.py   # SL/TP calculation, position sizing
+│   │   └── strategies/          # Individual strategy implementations
 │   │       ├── __init__.py
 │   │       ├── trend_following.py
 │   │       ├── mean_reversion.py
@@ -98,88 +96,64 @@ HaruTrader/
 │   │
 │   ├── backtest/
 │   │   ├── __init__.py
-│   │   ├── engine.py             # Event-based backtesting engine
-│   │   ├── optimizer.py          # Strategy parameter optimization
-│   │   ├── walk_forward.py       # Walk-forward analysis
-│   │   ├── monte_carlo.py        # Monte Carlo simulations
-│   │   └── cross_validation.py   # Combinatorial Purged Cross Validation
+│   │   ├── engine.py            # Event-based backtesting engine
+│   │   ├── optimizer.py         # Strategy parameter optimization
+│   │   ├── walk_forward.py      # Walk-forward analysis
+│   │   ├── monte_carlo.py       # Monte Carlo simulations
+│   │   └── cross_validation.py  # Combinatorial Purged Cross Validation
 │   │
 │   ├── live_trading/
 │   │   ├── __init__.py
-│   │   ├── executor.py           # Real-time execution loop
-│   │   ├── monitor.py            # Performance tracking
-│   │   └── recovery.py           # Failover and recovery mechanisms
+│   │   ├── executor.py          # Real-time execution loop
+│   │   ├── monitor.py           # Performance tracking
+│   │   └── recovery.py          # Failover and recovery mechanisms
 │   │
 │   ├── dashboard/
 │   │   ├── __init__.py
-│   │   ├── app.py                # Flask/FastAPI application
-│   │   ├── auth.py               # OAuth2 authentication
+│   │   ├── app.py               # Flask/FastAPI application
+│   │   ├── auth.py              # OAuth2 authentication
 │   │   ├── routes/
 │   │   │   ├── __init__.py
-│   │   │   ├── account.py        # Account endpoints
-│   │   │   ├── performance.py    # Performance metrics endpoints
-│   │   │   └── strategy.py       # Strategy management endpoints
-│   │   ├── static/               # CSS, JS, images
-│   │   └── templates/            # HTML templates
+│   │   │   ├── account.py       # Account endpoints
+│   │   │   ├── performance.py   # Performance metrics endpoints
+│   │   │   └── strategy.py      # Strategy management endpoints
+│   │   ├── static/              # CSS, JS, images
+│   │   └── templates/           # HTML templates
 │   │
 │   ├── models/
 │   │   ├── __init__.py
-│   │   ├── market_data.py        # Market data models
-│   │   ├── trade.py              # Trade and position models
-│   │   ├── account.py            # Account and performance models
-│   │   └── user.py               # User and authentication models
-│   │
-│   ├── integrations/
-│   │   ├── __init__.py
-│   │   ├── mt5/
-│   │   │   ├── __init__.py
-│   │   │   ├── client.py         # MT5 connection and API wrapper
-│   │   │   └── data.py           # MT5 data retrieval
-│   │   ├── telegram/
-│   │   │   ├── __init__.py
-│   │   │   └── bot.py            # Telegram bot implementation
-│   │   ├── timescaledb/
-│   │   │   ├── __init__.py
-│   │   │   └── client.py         # TimescaleDB connection and queries
-│   │   └── external_data/
-│   │       ├── __init__.py
-│   │       ├── investpy.py       # Investpy integration
-│   │       ├── forex_factory.py  # Forex Factory integration
-│   │       └── social_media.py   # Twitter, StockTwits integration
+│   │   ├── market_data.py       # Market data models
+│   │   ├── trade.py             # Trade and position models
+│   │   ├── account.py           # Account and performance models
+│   │   └── user.py              # User and authentication models
 │   │
 │   └── utils/
 │       ├── __init__.py
-│       ├── logger.py             # Logging configuration
-│       ├── security.py           # Encryption and security utilities
-│       ├── validation.py         # Input validation
-│       └── helpers.py            # Miscellaneous helper functions
-│
-├── scripts/
-│   ├── setup_database.py         # Database initialization
-│   ├── generate_reports.py       # Report generation scripts
-│   └── deploy.py                 # Deployment automation
+│       ├── logger.py            # Logging configuration
+│       ├── timeutils.py         # Time and timezone utilities
+│       └── validation.py        # Input validation
 │
 ├── tests/
 │   ├── __init__.py
-│   ├── conftest.py               # Test configuration
-│   ├── unit/                     # Unit tests for each module
+│   ├── conftest.py              # Test configuration
+│   ├── unit/                    # Unit tests for each module
 │   │   ├── __init__.py
 │   │   ├── test_controller.py
 │   │   ├── test_trader.py
 │   │   └── ...
-│   ├── integration/              # Integration tests
+│   ├── integration/             # Integration tests
 │   │   ├── __init__.py
 │   │   ├── test_mt5_integration.py
 │   │   └── ...
-│   └── fixtures/                 # Test data fixtures
+│   └── fixtures/                # Test data fixtures
 │       ├── market_data.json
 │       └── ...
 │
 └── docs/
-    ├── architecture.md           # Architecture documentation
-    ├── api.md                    # API documentation
-    ├── deployment.md             # Deployment guide
-    └── user_guide.md             # User guide
+    ├── architecture.md          # Architecture documentation
+    ├── api.md                   # API documentation
+    ├── deployment.md            # Deployment guide
+    └── user_guide.md            # User guide
 
 ## User Roles
 - **Admin**: Manages system configurations, user accounts, and overall strategy deployment.
@@ -213,7 +187,7 @@ The Controller module serves as the central coordinator for data acquisition, no
   - Store live trade monitor data such as floating PnL, floating equity, and the number of open positions.
 
 - **Logger:**  
-  - Use Python’s built-in logging module to track important events and exceptions (e.g., MT5 connection failures, trade closures).
+  - Use Python's built-in logging module to track important events and exceptions (e.g., MT5 connection failures, trade closures).
 
 ### 2. Trader Module
 **Overview:**  
@@ -245,7 +219,7 @@ This module forms the trading brain, generating signals and managing risk. It no
   - **Function:** The screener will continuously scan through a predefined list of symbols and compare each against the criteria of the available strategies.
   - **Process:**  
     - Retrieve the list of available strategies along with their conditions.
-    - For each symbol, evaluate if current market conditions match any strategy’s entry criteria.
+    - For each symbol, evaluate if current market conditions match any strategy's entry criteria.
     - Display (or log) symbols that satisfy one or more strategy conditions.
   - **Output:**  
     - A dynamically updated view (which can be integrated into the dashboard) that highlights symbols matching strategy criteria.
