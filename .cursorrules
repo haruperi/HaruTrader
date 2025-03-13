@@ -136,13 +136,130 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 Reorganizing the project structure to follow best practices.
 
 ### Plan:
-[X] Move all test files from examples to tests directory
-[X] Delete examples directory
-[X] Delete scripts directory
-[X] Update .cursorrules with testing rules
-[X] Update tests/README.md to reflect the changes
-[X] Consolidate notification functionality
-[X] Delete all log files for a fresh start
+## Phase 1: Project Setup and Core Infrastructure
+[X] Initial Project Setup
+  - [X] Create virtual environment and install Python 3.13.2
+  - [X] Set up requirements.txt with initial dependencies
+  - [X] Create .env.example with required environment variables
+  - [X] Set up project structure according to architecture diagram
+  - [X] Initialize git repository and set up .gitignore
+
+[ ] Core Infrastructure Setup
+  - [X] Set up logging configuration in app/utils/logger.py
+  - [ ] Implement timeutils.py for timezone handling
+  - [ ] Create validation.py for input validation
+  - [ ] Set up TimescaleDB connection and models
+  - [ ] Configure OAuth2 authentication system
+
+## Phase 2: MT5 Integration and Core Trading Components
+[ ] MT5 Integration (app/core/mt5_data.py)
+  - [ ] Implement MT5 client connection
+  - [ ] Set up market data operations
+  - [ ] Create data retrieval functions
+  - [ ] Implement error handling and reconnection logic
+
+[ ] Trader Module (app/trader/)
+  - [ ] Implement order.py for order placement
+  - [ ] Create position.py for position management
+  - [ ] Develop risk.py for risk calculations
+  - [ ] Set up history.py for trade history retrieval
+
+[ ] Core Notification System (app/core/notification.py)
+  - [ ] Set up Telegram bot integration
+  - [ ] Implement message formatting
+  - [ ] Create notification queue system
+  - [ ] Add error reporting functionality
+
+## Phase 3: Strategy Development
+[ ] Base Strategy Framework (app/strategy/)
+  - [ ] Create base.py with strategy interface
+  - [ ] Implement indicators.py with technical indicators
+  - [ ] Set up risk_management.py
+  - [ ] Develop screener.py for symbol scanning
+
+[ ] Initial Strategy Implementations
+  - [ ] Create trend_following.py
+  - [ ] Implement mean_reversion.py
+  - [ ] Develop breakout.py
+  - [ ] Add strategy parameter management
+
+## Phase 4: Backtesting System
+[ ] Backtesting Engine (app/backtest/)
+  - [ ] Create event-based engine.py
+  - [ ] Implement optimizer.py
+  - [ ] Set up walk_forward.py
+  - [ ] Add monte_carlo.py simulation
+  - [ ] Implement cross_validation.py
+
+## Phase 5: Live Trading System
+[ ] Live Trading Module (app/live_trading/)
+  - [ ] Develop executor.py for real-time execution
+  - [ ] Create monitor.py for performance tracking
+  - [ ] Implement recovery.py for failover
+  - [ ] Add concurrent task handling
+
+## Phase 6: Dashboard Development
+[ ] Web Dashboard (app/dashboard/)
+  - [ ] Set up Flask/FastAPI application
+  - [ ] Create authentication system
+  - [ ] Implement account endpoints
+  - [ ] Add performance metrics endpoints
+  - [ ] Develop strategy management endpoints
+  - [ ] Create HTML templates and static assets
+
+## Phase 7: Testing and Documentation
+[ ] Testing Infrastructure
+  - [ ] Set up pytest configuration
+  - [ ] Create unit tests for each module
+  - [ ] Implement integration tests
+  - [ ] Add end-to-end tests
+  - [ ] Create test fixtures and utilities
+
+[ ] Documentation
+  - [ ] Write architecture.md
+  - [ ] Create API documentation
+  - [ ] Develop deployment guide
+  - [ ] Write user guide
+  - [ ] Add inline code documentation
+
+## Phase 8: Deployment and Monitoring
+[ ] Deployment Setup
+  - [ ] Create Docker configuration
+  - [ ] Set up CI/CD pipeline
+  - [ ] Configure production environment
+  - [ ] Implement backup system
+
+[ ] Monitoring System
+  - [ ] Set up Grafana dashboards
+  - [ ] Implement system health checks
+  - [ ] Create performance monitoring
+  - [ ] Add alert system
+
+## Phase 9: Security and Optimization
+[ ] Security Implementation
+  - [ ] Implement API key encryption
+  - [ ] Set up secure communication
+  - [ ] Add audit logging
+  - [ ] Implement access control
+
+[ ] Performance Optimization
+  - [ ] Optimize database queries
+  - [ ] Improve concurrent operations
+  - [ ] Enhance error handling
+  - [ ] Add caching where appropriate
+
+## Phase 10: Additional Features and Integration
+[ ] External Data Integration
+  - [ ] Add Investpy integration
+  - [ ] Implement Forex Factory data collection
+  - [ ] Set up social media sentiment analysis
+  - [ ] Create news feed integration
+
+[ ] Additional Features
+  - [ ] Implement portfolio management
+  - [ ] Add risk reporting
+  - [ ] Create performance analytics
+  - [ ] Develop custom indicators
 
 ### Progress:
 ✓ Moved all test files from examples to tests directory:
@@ -178,11 +295,69 @@ Next: Continue implementing the remaining methods in the trade.py file:
 
 ## Testing Rules
 
-All tests must be placed in the tests folder. This includes:
-- Unit tests for individual components
-- Integration tests for testing interactions between components
-- End-to-end tests for testing the entire system
-- Test fixtures and test utilities
+All tests must be organized in the following directory structure under the tests folder:
 
-Each test file should follow the naming convention of `test_*.py` to be automatically discovered by test runners.
-Test classes should be named `Test*` and test methods should be named `test_*`.
+### Unit Tests (`tests/unit/`)
+- Purpose: Test individual components/functions in isolation
+- Scope: Single unit of code (class, function, method)
+- Dependencies: Usually mocked/stubbed
+- Examples:
+  - `tests/unit/utils/test_logger.py` - Tests individual logger functions
+  - `tests/unit/core/test_mt5_data.py` - Tests MT5 data parsing functions
+  - `tests/unit/trader/test_position.py` - Tests position calculation logic
+
+### Integration Tests (`tests/integration/`)
+- Purpose: Test how components work together
+- Scope: Multiple components/services
+- Dependencies: Real or test doubles
+- Examples:
+  - `tests/integration/test_mt5_trader.py` - Tests MT5 client with trading logic
+  - `tests/integration/test_db_logging.py` - Tests logger with database
+  - `tests/integration/test_strategy_execution.py` - Tests strategy with live data feed
+
+### End-to-End Tests (`tests/e2e/`)
+- Purpose: Test complete workflows
+- Scope: Entire system
+- Dependencies: Real systems
+- Examples:
+  - `tests/e2e/test_trading_workflow.py` - Complete trade lifecycle
+  - `tests/e2e/test_backtest_workflow.py` - Full backtest process
+  - `tests/e2e/test_dashboard_workflow.py` - Complete dashboard interaction
+
+### Fixtures (`tests/fixtures/`)
+- Purpose: Provide reusable test data and setup
+- Types:
+  - Data fixtures: Sample data for tests (e.g., OHLCV data)
+  - Object fixtures: Pre-configured objects (e.g., MT5 API mock)
+  - Environment fixtures: Test environment setup (e.g., test database)
+- Examples:
+  - `tests/fixtures/market_data.py` - Sample OHLCV data
+  - `tests/fixtures/mt5_mock.py` - MT5 API mock
+  - `tests/fixtures/test_db.py` - Test database setup
+
+### Test File Organization
+Test files must follow these naming conventions:
+- All test files must be named `test_*.py` to be automatically discovered by test runners
+- Test classes must be named `Test*`
+- Test methods must be named `test_*`
+- Unit test files should mirror the structure of the source code:
+  - For a source file at `app/utils/logger.py`, the test should be at `tests/unit/utils/test_logger.py`
+  - For a source file at `app/core/trade.py`, the test should be at `tests/unit/core/test_trade.py`
+
+### Test Organization Guidelines
+- Keep test files focused and cohesive
+- Group related test cases in test classes
+- Use descriptive test names that explain the scenario being tested
+- Follow the Arrange-Act-Assert pattern in test methods
+- Use appropriate fixtures for test setup and teardown
+- Mock external dependencies in unit tests
+
+### Tool Tests (`tests/tools/`)
+- Purpose: Test development tools and scripts
+- Scope: Development utilities and helper scripts
+- Dependencies: Usually real dependencies (not mocked)
+- Examples:
+  - `tests/tools/test_logger.py` - Manual logger testing script
+  - `tests/tools/test_db_setup.py` - Database setup verification
+  - `tests/tools/test_env_check.py` - Environment setup verification
+

@@ -143,3 +143,131 @@ Key parameters for live trading:
 - `--demo`: Run in demo mode (no real trades)
 
 Always test the strategy thoroughly in demo mode before using it with real money. 
+
+
+# Project TODOs
+
+## Phase 1: Project Setup and Core Infrastructure
+[ ] Initial Project Setup
+  - [ ] Create virtual environment and install Python 3.13.2
+  - [ ] Set up requirements.txt with initial dependencies
+  - [ ] Create .env.example with required environment variables
+  - [ ] Set up project structure according to architecture diagram
+  - [ ] Initialize git repository and set up .gitignore
+
+[ ] Core Infrastructure Setup
+  - [ ] Set up logging configuration in app/utils/logger.py
+  - [ ] Implement timeutils.py for timezone handling
+  - [ ] Create validation.py for input validation
+  - [ ] Set up TimescaleDB connection and models
+  - [ ] Configure OAuth2 authentication system
+
+## Phase 2: MT5 Integration and Core Trading Components
+[ ] MT5 Integration (app/core/mt5_data.py)
+  - [ ] Implement MT5 client connection
+  - [ ] Set up market data operations
+  - [ ] Create data retrieval functions
+  - [ ] Implement error handling and reconnection logic
+
+[ ] Trader Module (app/trader/)
+  - [ ] Implement order.py for order placement
+  - [ ] Create position.py for position management
+  - [ ] Develop risk.py for risk calculations
+  - [ ] Set up history.py for trade history retrieval
+
+[ ] Core Notification System (app/core/notification.py)
+  - [ ] Set up Telegram bot integration
+  - [ ] Implement message formatting
+  - [ ] Create notification queue system
+  - [ ] Add error reporting functionality
+
+## Phase 3: Strategy Development
+[ ] Base Strategy Framework (app/strategy/)
+  - [ ] Create base.py with strategy interface
+  - [ ] Implement indicators.py with technical indicators
+  - [ ] Set up risk_management.py
+  - [ ] Develop screener.py for symbol scanning
+
+[ ] Initial Strategy Implementations
+  - [ ] Create trend_following.py
+  - [ ] Implement mean_reversion.py
+  - [ ] Develop breakout.py
+  - [ ] Add strategy parameter management
+
+## Phase 4: Backtesting System
+[ ] Backtesting Engine (app/backtest/)
+  - [ ] Create event-based engine.py
+  - [ ] Implement optimizer.py
+  - [ ] Set up walk_forward.py
+  - [ ] Add monte_carlo.py simulation
+  - [ ] Implement cross_validation.py
+
+## Phase 5: Live Trading System
+[ ] Live Trading Module (app/live_trading/)
+  - [ ] Develop executor.py for real-time execution
+  - [ ] Create monitor.py for performance tracking
+  - [ ] Implement recovery.py for failover
+  - [ ] Add concurrent task handling
+
+## Phase 6: Dashboard Development
+[ ] Web Dashboard (app/dashboard/)
+  - [ ] Set up Flask/FastAPI application
+  - [ ] Create authentication system
+  - [ ] Implement account endpoints
+  - [ ] Add performance metrics endpoints
+  - [ ] Develop strategy management endpoints
+  - [ ] Create HTML templates and static assets
+
+## Phase 7: Testing and Documentation
+[ ] Testing Infrastructure
+  - [ ] Set up pytest configuration
+  - [ ] Create unit tests for each module
+  - [ ] Implement integration tests
+  - [ ] Add end-to-end tests
+  - [ ] Create test fixtures and utilities
+
+[ ] Documentation
+  - [ ] Write architecture.md
+  - [ ] Create API documentation
+  - [ ] Develop deployment guide
+  - [ ] Write user guide
+  - [ ] Add inline code documentation
+
+## Phase 8: Deployment and Monitoring
+[ ] Deployment Setup
+  - [ ] Create Docker configuration
+  - [ ] Set up CI/CD pipeline
+  - [ ] Configure production environment
+  - [ ] Implement backup system
+
+[ ] Monitoring System
+  - [ ] Set up Grafana dashboards
+  - [ ] Implement system health checks
+  - [ ] Create performance monitoring
+  - [ ] Add alert system
+
+## Phase 9: Security and Optimization
+[ ] Security Implementation
+  - [ ] Implement API key encryption
+  - [ ] Set up secure communication
+  - [ ] Add audit logging
+  - [ ] Implement access control
+
+[ ] Performance Optimization
+  - [ ] Optimize database queries
+  - [ ] Improve concurrent operations
+  - [ ] Enhance error handling
+  - [ ] Add caching where appropriate
+
+## Phase 10: Additional Features and Integration
+[ ] External Data Integration
+  - [ ] Add Investpy integration
+  - [ ] Implement Forex Factory data collection
+  - [ ] Set up social media sentiment analysis
+  - [ ] Create news feed integration
+
+[ ] Additional Features
+  - [ ] Implement portfolio management
+  - [ ] Add risk reporting
+  - [ ] Create performance analytics
+  - [ ] Develop custom indicators

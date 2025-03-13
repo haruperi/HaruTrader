@@ -1,0 +1,5 @@
+tensorflow==2.15.0
+numpy>=1.26.0
+keras==2.15.0
+protobuf>=3.20.3
+h5py>=3.10.0 

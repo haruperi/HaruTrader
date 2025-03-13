@@ -8,6 +8,7 @@ import logging
 import logging.handlers
 import os
 import sys
+import re
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -39,59 +40,41 @@ LOG_LEVELS = {
 DEFAULT_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 DETAILED_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
 
+# Store logger configurations
+_logger_configs = {}
+
 class SensitiveFilter(logging.Filter):
     """Filter to mask sensitive information in log messages."""
     
     def __init__(self, sensitive_words=None):
         super().__init__()
         self.sensitive_words = sensitive_words or ['password', 'token', 'key', 'secret', 'credential']
+        # Compile regex patterns for better performance
+        self.patterns = [
+            # JSON format: "key": "value" or 'key': 'value'
+            re.compile(r'(["\']?(?:' + '|'.join(self.sensitive_words) + r')["\']?\s*[:=]\s*["\']?)([^"\'\s,})\n]+)(["\']?)', re.IGNORECASE),
+        ]
     
     def filter(self, record):
+        """Filter log records to mask sensitive information."""
         if not hasattr(record, 'msg') or not isinstance(record.msg, str):
             return True
             
-        msg = record.msg
-        for word in self.sensitive_words:
-            # Look for patterns like password=xyz or "password": "xyz"
-            for pattern in [f"{word}=", f'"{word}":', f"'{word}':"]:
-                if pattern in msg.lower():
-                    # Find the value after the pattern and mask it
-                    start_idx = msg.lower().find(pattern) + len(pattern)
-                    # Skip whitespace
-                    while start_idx < len(msg) and msg[start_idx].isspace():
-                        start_idx += 1
-                    
-                    # Handle different value formats (quoted, unquoted)
-                    if start_idx < len(msg):
-                        if msg[start_idx] in ['"', "'"]:
-                            # Find the closing quote
-                            quote = msg[start_idx]
-                            end_idx = msg.find(quote, start_idx + 1)
-                            if end_idx > start_idx:
-                                # Mask the value between quotes
-                                value = msg[start_idx+1:end_idx]
-                                masked_value = self._mask_value(value)
-                                msg = msg[:start_idx+1] + masked_value + msg[end_idx:]
-                        else:
-                            # Find the end of the unquoted value (space, comma, etc.)
-                            end_idx = start_idx
-                            while end_idx < len(msg) and msg[end_idx] not in [' ', ',', '}', ')', '\n', '\t']:
-                                end_idx += 1
-                            
-                            if end_idx > start_idx:
-                                # Mask the unquoted value
-                                value = msg[start_idx:end_idx]
-                                masked_value = self._mask_value(value)
-                                msg = msg[:start_idx] + masked_value + msg[end_idx:]
+        msg = str(record.msg)
+        
+        # Handle all formats with a single pattern
+        msg = self.patterns[0].sub(
+            lambda m: (
+                m.group(1) +  # Keep the prefix (key name, quotes, and separator)
+                '***' +  # Always use exactly 3 asterisks
+                (m.group(2)[-3:] if len(m.group(2)) > 3 else m.group(2)) +  # Keep last 3 chars
+                m.group(3)  # Keep the suffix (closing quote)
+            ),
+            msg
+        )
         
         record.msg = msg
         return True
-    
-    def _mask_value(self, value):
-        """Mask a sensitive value, showing only the last few characters."""
-        if len(value) <= 4:
-            return '*' * len(value)
-        return '*' * (len(value) - 4) + value[-4:]
 
 
 def get_logger(name: str, log_level: Optional[str] = None, 
@@ -110,6 +93,8 @@ def get_logger(name: str, log_level: Optional[str] = None,
     Returns:
         A configured logger instance
     """
+    global _logger_configs
+    
     # Convert module name to a suitable filename
     if name == '__main__':
         file_name = 'main'
@@ -120,52 +105,72 @@ def get_logger(name: str, log_level: Optional[str] = None,
     # Get or create logger
     logger = logging.getLogger(name)
     
-    # Only configure the logger if it hasn't been configured yet
-    if not logger.handlers:
-        # Set log level
-        level_name = log_level or DEFAULT_LOG_LEVEL
-        level = LOG_LEVELS.get(level_name.upper(), logging.INFO)
-        logger.setLevel(level)
+    # Check if logger was previously configured
+    if name in _logger_configs:
+        prev_config = _logger_configs[name]
+        log_level = log_level or prev_config.get('log_level')
+        log_to_file = prev_config.get('log_to_file', log_to_file)
+        log_to_console = prev_config.get('log_to_console', log_to_console)
+        detailed_format = prev_config.get('detailed_format', detailed_format)
+    
+    # Remove any existing handlers
+    logger.handlers.clear()
+    
+    # Set log level
+    level_name = log_level or DEFAULT_LOG_LEVEL
+    level = LOG_LEVELS.get(level_name.upper(), logging.INFO)
+    logger.setLevel(level)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        DETAILED_FORMAT if detailed_format else DEFAULT_FORMAT
+    )
+    
+    # Add console handler if requested
+    if log_to_console:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(level)  # Set handler level
+        logger.addHandler(console_handler)
+    
+    # Add file handler if requested
+    if log_to_file:
+        # Ensure logs directory exists
+        os.makedirs(LOGS_DIR, exist_ok=True)
         
-        # Create formatter
-        formatter = logging.Formatter(
-            DETAILED_FORMAT if detailed_format else DEFAULT_FORMAT
+        # Create a rotating file handler
+        log_file = LOGS_DIR / f"{file_name}.log"
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_file, maxBytes=1024*1024, backupCount=5  # 1MB per file
         )
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(level)  # Set handler level
+        logger.addHandler(file_handler)
         
-        # Add console handler if requested
-        if log_to_console:
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(formatter)
-            logger.addHandler(console_handler)
-        
-        # Add file handler if requested
-        if log_to_file:
-            # Ensure logs directory exists
-            os.makedirs(LOGS_DIR, exist_ok=True)
-            
-            # Create a rotating file handler
-            log_file = LOGS_DIR / f"{file_name}.log"
-            file_handler = logging.handlers.RotatingFileHandler(
-                log_file, maxBytes=10*1024*1024, backupCount=5
-            )
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-            
-            # Also log to a common application log file
-            app_log_file = LOGS_DIR / "trading_app.log"
-            app_file_handler = logging.handlers.RotatingFileHandler(
-                app_log_file, maxBytes=10*1024*1024, backupCount=5
-            )
-            app_file_handler.setFormatter(formatter)
-            logger.addHandler(app_file_handler)
-        
-        # Add sensitive information filter
-        sensitive_filter = SensitiveFilter()
-        for handler in logger.handlers:
-            handler.addFilter(sensitive_filter)
-        
-        # Don't propagate to the root logger
-        logger.propagate = False
+        # Also log to a common application log file
+        app_log_file = LOGS_DIR / "trading_app.log"
+        app_file_handler = logging.handlers.RotatingFileHandler(
+            app_log_file, maxBytes=1024*1024, backupCount=5  # 1MB per file
+        )
+        app_file_handler.setFormatter(formatter)
+        app_file_handler.setLevel(level)  # Set handler level
+        logger.addHandler(app_file_handler)
+    
+    # Add sensitive information filter
+    sensitive_filter = SensitiveFilter()
+    for handler in logger.handlers:
+        handler.addFilter(sensitive_filter)
+    
+    # Don't propagate to the root logger
+    logger.propagate = False
+    
+    # Store configuration
+    _logger_configs[name] = {
+        'log_level': level_name,
+        'log_to_file': log_to_file,
+        'log_to_console': log_to_console,
+        'detailed_format': detailed_format
+    }
     
     return logger
 
@@ -189,7 +194,7 @@ def configure_root_logger(log_level: str = None) -> None:
             logging.StreamHandler(sys.stdout),
             logging.handlers.RotatingFileHandler(
                 LOGS_DIR / "root.log", 
-                maxBytes=10*1024*1024, 
+                maxBytes=1024*1024,  # 1MB per file
                 backupCount=5
             )
         ]
@@ -239,7 +244,7 @@ def get_log_config() -> Dict[str, Any]:
                 'formatter': 'detailed',
                 'filters': ['sensitive'],
                 'filename': str(LOGS_DIR / 'trading_app.log'),
-                'maxBytes': 10*1024*1024,
+                'maxBytes': 1024*1024,  # 1MB per file
                 'backupCount': 5
             }
         },
@@ -248,11 +253,6 @@ def get_log_config() -> Dict[str, Any]:
                 'handlers': ['console', 'file'],
                 'level': DEFAULT_LOG_LEVEL,
                 'propagate': True
-            },
-            'app': {
-                'handlers': ['console', 'file'],
-                'level': DEFAULT_LOG_LEVEL,
-                'propagate': False
             }
         }
     } 
